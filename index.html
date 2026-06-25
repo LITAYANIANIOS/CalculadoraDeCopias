@@ -322,7 +322,7 @@
         </div>
         <div>
           <label class="field-label">Precio</label>
-          <div class="preview" style="margin:0"><span class="lbl">Por hoja</span><span class="val" style="font-size:22px">$300</span></div>
+          <div class="preview" style="margin:0"><span class="lbl">Por hoja</span><span class="val" style="font-size:22px">$200</span></div>
         </div>
       </div>
       <div class="addon">
@@ -425,7 +425,7 @@ var SPIRALS = [
   {mm:"25mm", min:182, max:210, price:3600},
   {mm:"29mm", min:211, max:240, price:3900},
   {mm:"33mm", min:241, max:280, price:4200},
-  {mm:"40mm", min:311, max:410, price:4900}
+  {mm:"40mm", min:281, max:410, price:4900}
 ];
 var SERVICE_LABEL = { bn:"Impresión B&N", color:"Impresión Color", opalina:"Impresión Opalina" };
 
@@ -440,7 +440,7 @@ function fmt(n){ return "$" + Math.round(n).toLocaleString("es-AR",{maximumFract
 
 function priceFor(service, sheets, faz){
   if(sheets<=0) return 0;
-  if(service==="color")   return 300*sheets;
+  if(service==="color")   return 200*sheets;
   if(service==="opalina") return 400*sheets;
   // B&N
   if(sheets<=50)  return 100*sheets;
