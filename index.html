@@ -288,7 +288,7 @@
     <div class="panel" data-service="bn">
       <div class="row">
         <div>
-          <label class="field-label">Cantidad de hojas</label>
+          <label class="field-label">Cantidad de páginas</label>
           <input type="number" class="sheets" min="0" inputmode="numeric" placeholder="0">
         </div>
         <div>
@@ -297,7 +297,7 @@
             <label class="on"><input type="radio" name="faz-bn" value="simple" checked> Simple</label>
             <label><input type="radio" name="faz-bn" value="doble"> Doble</label>
           </div>
-          <div class="faz-hint">Solo cambia el precio a partir de 100 hojas.</div>
+          <div class="faz-hint">Solo cambia el precio a partir de 100 páginas.</div>
         </div>
       </div>
       <div class="addon">
@@ -317,12 +317,12 @@
     <div class="panel" data-service="color" hidden>
       <div class="row">
         <div>
-          <label class="field-label">Cantidad de hojas</label>
+          <label class="field-label">Cantidad de páginas</label>
           <input type="number" class="sheets" min="0" inputmode="numeric" placeholder="0">
         </div>
         <div>
           <label class="field-label">Precio</label>
-          <div class="preview" style="margin:0"><span class="lbl">Por hoja</span><span class="val" style="font-size:22px">$200</span></div>
+          <div class="preview" style="margin:0"><span class="lbl">Por página</span><span class="val" style="font-size:22px">$200</span></div>
         </div>
       </div>
       <div class="addon">
@@ -342,12 +342,12 @@
     <div class="panel" data-service="opalina" hidden>
       <div class="row">
         <div>
-          <label class="field-label">Cantidad de hojas</label>
+          <label class="field-label">Cantidad de páginas</label>
           <input type="number" class="sheets" min="0" inputmode="numeric" placeholder="0">
         </div>
         <div>
           <label class="field-label">Precio</label>
-          <div class="preview" style="margin:0"><span class="lbl">Por hoja</span><span class="val" style="font-size:22px">$400</span></div>
+          <div class="preview" style="margin:0"><span class="lbl">Por página</span><span class="val" style="font-size:22px">$400</span></div>
         </div>
       </div>
       <div class="addon">
@@ -384,7 +384,7 @@
   </aside>
 
   <div class="shortcuts">
-    <span><span class="kbd">+</span> Agregar ítem</span>
+    <span><span class="kbd">+</span> <span class="kbd">↵</span> Agregar ítem</span>
     <span><span class="kbd">A</span> Anillado</span>
     <span><span class="kbd">T</span> Ver ticket</span>
     <span><span class="kbd">Esc</span> Nuevo presupuesto</span>
@@ -458,18 +458,24 @@ function detectSpiral(sheets){
 function activePanel(){ return document.querySelector('.panel[data-service="'+activeTab+'"]'); }
 
 /* ================= PREVIEW POR PANEL ================= */
+// Hojas físicas a anillar: en B&N doble faz son páginas/2 (redondeo hacia arriba).
+function physicalSheets(service, pages, faz){
+  if(service==="bn" && faz==="doble") return Math.ceil(pages/2);
+  return pages;
+}
 function readPanel(panel){
   var service = panel.dataset.service;
-  var sheets = parseInt(panel.querySelector(".sheets").value,10) || 0;
-  if(sheets<0) sheets=0;
+  var pages = parseInt(panel.querySelector(".sheets").value,10) || 0;
+  if(pages<0) pages=0;
   var faz = "simple";
   var fazEl = panel.querySelector('input[name="faz-'+service+'"]:checked');
   if(fazEl) faz = fazEl.value;
   var bindEl = panel.querySelector(".bind");
   var bind = bindEl.checked;
-  var printPrice = priceFor(service, sheets, faz);
-  var spiral = bind ? detectSpiral(sheets) : null;
-  return {service:service, sheets:sheets, faz:faz, bind:bind, printPrice:printPrice, spiral:spiral};
+  var printPrice = priceFor(service, pages, faz);
+  var phys = physicalSheets(service, pages, faz);
+  var spiral = bind ? detectSpiral(phys) : null;
+  return {service:service, sheets:pages, phys:phys, faz:faz, bind:bind, printPrice:printPrice, spiral:spiral};
 }
 
 function refreshPanel(panel){
@@ -486,12 +492,13 @@ function refreshPanel(panel){
   // spiral readout
   var ro = panel.querySelector(".spiral-readout");
   if(d.bind){
-    if(d.sheets<2){
-      ro.innerHTML = '<span class="warn">Ingresá al menos 2 hojas para anillar.</span>';
+    if(d.phys<2){
+      ro.innerHTML = '<span class="warn">Muy pocas páginas para anillar.</span>';
     } else if(d.spiral){
-      ro.innerHTML = '<span class="ok">Espiral detectado: <b>'+d.spiral.mm+'</b> · <b>'+fmt(d.spiral.price)+'</b></span>';
+      var extra = (d.phys!==d.sheets) ? (' <b>('+d.phys+' hojas, doble faz)</b>') : '';
+      ro.innerHTML = '<span class="ok">Espiral: <b>'+d.spiral.mm+'</b> · <b>'+fmt(d.spiral.price)+'</b>'+extra+'</span>';
     } else {
-      ro.innerHTML = '<span class="warn">No hay anillado para más de 410 hojas.</span>';
+      ro.innerHTML = '<span class="warn">No hay anillado para esa cantidad (máx. 410 hojas).</span>';
     }
   }
   // preview total (the LAST .preview = subtotal del ítem)
@@ -506,15 +513,16 @@ function refreshPanel(panel){
 /* ================= CARRITO ================= */
 function addFromPanel(panel){
   var d = readPanel(panel);
-  if(d.sheets<=0){ toast("Ingresá la cantidad de hojas"); return; }
+  if(d.sheets<=0){ toast("Ingresá la cantidad de páginas"); return; }
   itemSeq++;
   var item = {
     id: itemSeq,
     service: d.service,
     sheets: d.sheets,
+    phys: d.phys,
     faz: (d.service==="bn") ? d.faz : null,
     printPrice: d.printPrice,
-    binding: (d.bind && d.spiral) ? {mm:d.spiral.mm, price:d.spiral.price} : null
+    binding: (d.bind && d.spiral) ? {mm:d.spiral.mm, price:d.spiral.price, phys:d.phys} : null
   };
   cart.push(item);
   // reset panel para el próximo ítem
@@ -532,9 +540,14 @@ function removeItem(id){
 }
 
 function itemDesc(it){
-  var d = SERVICE_LABEL[it.service] + " — " + it.sheets + " hoja" + (it.sheets===1?"":"s");
+  var d = SERVICE_LABEL[it.service] + " — " + it.sheets + " página" + (it.sheets===1?"":"s");
   if(it.service==="bn") d += " (" + (it.faz==="doble"?"doble":"simple") + " faz)";
   return d;
+}
+// "Anillado 20mm" o "Anillado 20mm (100 hojas)" cuando difiere por doble faz.
+function bindLabel(it){
+  var extra = (it.binding.phys && it.binding.phys!==it.sheets) ? ' ('+it.binding.phys+' hojas)' : '';
+  return 'Anillado ' + it.binding.mm + extra;
 }
 function itemTotal(it){ return it.printPrice + (it.binding ? it.binding.price : 0); }
 function cartSubtotal(){ return cart.reduce(function(s,it){ return s+itemTotal(it); },0); }
@@ -544,7 +557,7 @@ function renderCart(){
   var body = document.getElementById("cartBody");
   document.getElementById("cartCount").textContent = cart.length;
   if(cart.length===0){
-    body.innerHTML = '<div class="empty"><div class="big">🧾</div>Carrito vacío.<br>Agregá un ítem con <b>+</b>.</div>';
+    body.innerHTML = '<div class="empty"><div class="big">🧾</div>Carrito vacío.<br>Agregá un ítem con <b>+</b> o <b>Enter</b>.</div>';
   } else {
     var html = "";
     cart.forEach(function(it,idx){
@@ -557,7 +570,7 @@ function renderCart(){
       html +=     '</div>';
       html +=   '</div>';
       if(it.binding){
-        html += '<div class="sub"><span>↳ Anillado '+it.binding.mm+'</span><span class="price">'+fmt(it.binding.price)+'</span></div>';
+        html += '<div class="sub"><span>↳ '+bindLabel(it)+'</span><span class="price">'+fmt(it.binding.price)+'</span></div>';
       }
       html += '</div>';
     });
@@ -590,7 +603,7 @@ function buildTicket(){
   cart.forEach(function(it,idx){
     html += '<div class="t-item">';
     html +=   '<div class="l1"><span class="nm">'+(idx+1)+'. '+itemDesc(it)+'</span><span>'+fmt(it.printPrice)+'</span></div>';
-    if(it.binding) html += '<div class="sub"><span>↳ Anillado '+it.binding.mm+'</span><span>'+fmt(it.binding.price)+'</span></div>';
+    if(it.binding) html += '<div class="sub"><span>↳ '+bindLabel(it)+'</span><span>'+fmt(it.binding.price)+'</span></div>';
     html += '</div>';
   });
   body.innerHTML = html;
@@ -623,7 +636,7 @@ function whatsappText(){
   L.push("");
   cart.forEach(function(it,idx){
     L.push("*"+(idx+1)+".* " + itemDesc(it) + " — " + fmt(it.printPrice));
-    if(it.binding) L.push("   ↳ _Anillado " + it.binding.mm + "_ — " + fmt(it.binding.price));
+    if(it.binding) L.push("   ↳ _" + bindLabel(it) + "_ — " + fmt(it.binding.price));
   });
   L.push("");
   var sub = cartSubtotal();
@@ -660,7 +673,7 @@ function printTicket(){
   var items="";
   cart.forEach(function(it,idx){
     items += '<div class="ti"><div class="l1"><span>'+(idx+1)+'. '+itemDesc(it)+'</span><span>'+fmt(it.printPrice)+'</span></div>';
-    if(it.binding) items += '<div class="sub"><span>&#8627; Anillado '+it.binding.mm+'</span><span>'+fmt(it.binding.price)+'</span></div>';
+    if(it.binding) items += '<div class="sub"><span>&#8627; '+bindLabel(it)+'</span><span>'+fmt(it.binding.price)+'</span></div>';
     items += '</div>';
   });
   var totHtml;
@@ -791,6 +804,14 @@ document.addEventListener("keydown", function(e){
   var inName = (document.activeElement && document.activeElement.id==="custName");
   if(inName) return; // no secuestramos teclas mientras escriben el nombre
 
+  if(e.key==="Enter"){
+    var ae = document.activeElement;
+    // Enter agrega cuando estás en el campo de cantidad o sin foco; en botones/toggle hace lo suyo.
+    if(!ae || ae.classList.contains("sheets") || ae===document.body){
+      e.preventDefault(); addFromPanel(activePanel());
+    }
+    return;
+  }
   if(e.key==="+"){ e.preventDefault(); addFromPanel(activePanel()); return; }
   if(e.key==="a"||e.key==="A"){
     e.preventDefault();
